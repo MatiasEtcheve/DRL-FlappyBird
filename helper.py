@@ -112,11 +112,11 @@ def seek_distance_to_next_bar(bird: BirdObs, bars: List[BarObs]):
     return min(dx_top, dx_bottom)
 
 
-def get_value_action(
+def get_value_and_policy(
     agent, observation: FlappyObs, n_x: int = 100, n_y: int = 50
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Computes the value and action heatmap for a specific observation and a specific agent.
+    Computes the value and policy heatmap for a specific observation and a specific agent.
 
     WARNING: the agent must have the `compute_q_value_from_observation(self, observation: FlappyObs)` method
         which returns the q vector of length the number of action for a specific observation
@@ -139,7 +139,7 @@ def get_value_action(
     return value_renderer, action_renderer
 
 
-def plot_value_action(agent, observation: FlappyObs) -> Tuple[Figure, Axes]:
+def plot_value_and_policy(agent, observation: FlappyObs) -> Tuple[Figure, Axes]:
     """Plot the value and action heatmaps for a particular observation of a environment
 
     WARNING: the agent must have the `compute_q_value_from_observation(self, observation: FlappyObs)` method
@@ -148,7 +148,7 @@ def plot_value_action(agent, observation: FlappyObs) -> Tuple[Figure, Axes]:
     (x_bird, y_bird, v_bird), bars = observation
     n_x = 100
     n_y = n_x // 2
-    value, action = get_value_action(agent, observation, n_x, n_y)
+    value, action = get_value_and_policy(agent, observation, n_x, n_y)
     fig, axs = plt.subplots(1, 2, figsize=(24, 8))
     divider = make_axes_locatable(axs[0])
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -162,7 +162,7 @@ def plot_value_action(agent, observation: FlappyObs) -> Tuple[Figure, Axes]:
     im = axs[1].imshow(action, origin="lower")
     fig.colorbar(im, cax=cax, orientation="vertical")
     axs[1].axis("off")
-    axs[1].set_title("Best action")
+    axs[1].set_title("Policy")
 
     for i in range(2):
         for bar in bars:
@@ -196,7 +196,6 @@ def plot_observation(observation: FlappyObs) -> Tuple[Figure, Axes]:
                 edgecolor="black",
             )
         )
-    axs.axis("off")
     return fig, axs
 
 
