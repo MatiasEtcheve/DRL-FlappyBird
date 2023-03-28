@@ -8,9 +8,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-BarObs = Tuple[float, float, float, bool]
-BirdObs = Tuple[float, float, float]
-FlappyObs = Tuple[BirdObs, List[BarObs]]
+from defined_in_notebook import BirdObs, BarObs
 
 
 def split_bars_by_activity(

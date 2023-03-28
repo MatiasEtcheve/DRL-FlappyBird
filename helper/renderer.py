@@ -7,7 +7,8 @@ from IPython.display import Video
 from deep_rl.environments.flappy_bird import FlappyBird
 from tqdm import trange
 
-from helper import FlappyObs, compute_features_from_observation
+from helper import compute_features_from_observation
+from defined_in_notebook import FlappyObs
 
 
 def plot_observation(observation: FlappyObs, ax=None):
