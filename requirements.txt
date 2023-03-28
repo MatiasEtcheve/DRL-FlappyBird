@@ -1,0 +1,7 @@
+jax
+dm-haiku
+chex
+optax
+matplotlib
+numpy
+tqdm
