@@ -8,7 +8,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from helper.defined_in_notebook import BirdObs, BarObs, FlappyObs
+from helper.defined_in_notebook import BirdObs, BarObs, FlappyObs, DUMMY_OBS
 
 
 def split_bars_by_activity(
@@ -137,7 +137,7 @@ def get_value_and_policy(
     return value_renderer, action_renderer
 
 
-def plot_value_and_policy(agent, observation: FlappyObs) -> Tuple[Figure, Axes]:
+def plot_value_and_policy(agent, observation: FlappyObs = DUMMY_OBS) -> Tuple[Figure, Axes]:
     """Plot the value and action heatmaps for a particular observation of a environment
 
     WARNING: the agent must have the `compute_q_value_from_observation(self, observation: FlappyObs)` method
