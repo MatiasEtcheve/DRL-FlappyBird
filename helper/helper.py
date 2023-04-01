@@ -68,7 +68,7 @@ def compute_bird_bar_distance(bird: BirdObs, bars: List[BirdObs], foreseen_bars=
     ]
 
 
-def compute_features_from_observation(observation: FlappyObs, foreseen_bars: int = 3):
+def compute_features_from_observation(observation: FlappyObs, foreseen_bars: int = 2):
     """
     Computes all the features from a specific observation as follow
         [Y_BIRD, V_BIRD, distances to the `foreseen_bars` top bars, distances to the `foreseen_bars` bottom bars]
