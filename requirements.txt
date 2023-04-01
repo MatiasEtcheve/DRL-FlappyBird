@@ -1,0 +1,9 @@
+jax
+dm-haiku
+chex
+optax
+matplotlib
+numpy
+tqdm
+deep-rl # Custom package made by the Teachers
+pandas
