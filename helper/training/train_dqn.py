@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from optuna import Trial
 from tqdm import trange
 
-from helper import compute_features_from_observation, save_best_model, plot_value_and_policy
+from helper import save_best_model, plot_value_and_policy
 
 
 def run_dqn_episode(
@@ -40,7 +40,7 @@ def run_dqn_episode(
     # Run an episode.
     while True:
         # Generate an action from the agent's policy and step the environment.
-        action = agent.sample_action(compute_features_from_observation(state), evaluation)
+        action = agent.sample_action(state, evaluation)
         next_state, reward, done = env.step(action)
         if not evaluation:
             agent.observe(action, reward, done, copy.deepcopy(next_state))

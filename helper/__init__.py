@@ -5,3 +5,7 @@ from .features_and_plot import (
     plot_value_and_policy,
     save_best_model
 )
+from .training.train_dqn import (
+    train_agent,
+    run_dqn_episode
+)

@@ -208,6 +208,7 @@ class DeepAgent:
             batch_size: int,
             target_ema: float,
             network_hdim: int,
+            foreseen_bars: int = 2,
             seed: int = 0,
     ) -> None:
         """Initializes the DQN agent.
@@ -232,6 +233,7 @@ class DeepAgent:
         self._target_ema = target_ema
         self._Na = env.N_ACTIONS
         self._network_hdim = network_hdim
+        self._foreseen_bars = foreseen_bars
 
         # track the visit of each state
         # The keys are the hashed states, the values are the number of times we visited it.
@@ -269,7 +271,7 @@ class DeepAgent:
     def _init_state(self, rng: chex.PRNGKey) -> LearnerState:
         """Initialize the online parameters, the target parameters and the
         optimizer's state."""
-        dummy_step = compute_features_from_observation(self._env.reset())[None]
+        dummy_step = compute_features_from_observation(self._env.reset(), self._foreseen_bars)[None]
 
         online_params = self._init(rng, dummy_step)
         target_params = online_params
@@ -296,7 +298,8 @@ class DeepAgent:
         # Fill in this function to act using an epsilon-greedy policy.
         if not evaluation and np.random.uniform() < self._eps:
             return np.random.randint(self._Na)
-        return np.argmax(self._apply(self._learner_state.online_params, state[None]))
+        state_features = compute_features_from_observation(state, foreseen_bars=self._foreseen_bars)
+        return np.argmax(self._apply(self._learner_state.online_params, state_features[None]))
 
     def td_error(
             self,
@@ -464,7 +467,7 @@ class DeepAgent:
         Returns:
             chex.Array: q vector of length the number of actions
         """
-        features = compute_features_from_observation(observation)
+        features = compute_features_from_observation(observation, self._foreseen_bars)
         # q value: update if using other kind of agent
         q = self.apply(self._learner_state.online_params, features)
         return q
