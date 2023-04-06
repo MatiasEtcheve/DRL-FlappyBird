@@ -281,7 +281,7 @@ class DeepAgent:
             opt_state=opt_state,
         )
 
-    def act(
+    def sample_action(
             self,
             state: chex.Array,
             evaluation: bool,

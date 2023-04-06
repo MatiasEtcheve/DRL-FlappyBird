@@ -55,7 +55,7 @@ def save_gif_episode(
     # Run an episode.
     while True:
         # Generate an action from the agent's policy and step the environment.
-        action = agent.act(compute_features_from_observation(state), evaluation)
+        action = agent.sample_action(compute_features_from_observation(state), evaluation)
         next_state, reward, done = env.step(action)
         if not evaluation:
             agent.observe(action, reward, done, copy.deepcopy(next_state))
