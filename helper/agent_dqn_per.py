@@ -183,8 +183,8 @@ class PrioritizedReplayBuffer:
         self._max_priority = max(self._max_priority, priority)
 
 ############ Network cell ##############################################
-def network(x: chex.Array, n_actions: int) -> chex.Array:
-    out = hk.nets.MLP([32, n_actions], activation=jax.nn.relu)(x)
+def network(x: chex.Array, n_actions: int, hidden_dim: int) -> chex.Array:
+    out = hk.nets.MLP([hidden_dim, n_actions], activation=jax.nn.relu)(x)
     return out
 
 
@@ -207,6 +207,7 @@ class DeepAgent:
             min_buffer_capacity: int,
             batch_size: int,
             target_ema: float,
+            network_hdim: int,
             seed: int = 0,
     ) -> None:
         """Initializes the DQN agent.
@@ -230,6 +231,7 @@ class DeepAgent:
         self._batch_size = batch_size
         self._target_ema = target_ema
         self._Na = env.N_ACTIONS
+        self._network_hdim = network_hdim
 
         # track the visit of each state
         # The keys are the hashed states, the values are the number of times we visited it.
@@ -259,7 +261,7 @@ class DeepAgent:
         return optax.adam(learning_rate=self._learning_rate)
 
     def _hk_qfunction(self, state: chex.Array) -> chex.Array:
-        return network(state, self._Na)
+        return network(state, self._Na, self._network_hdim)
 
     def first_observe(self, state: chex.Array) -> None:
         self._state = state

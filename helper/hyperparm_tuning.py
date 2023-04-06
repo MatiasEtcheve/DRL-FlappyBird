@@ -1,15 +1,14 @@
 import logging
 import sys
+from typing import Callable
 
 import optuna
 from deep_rl.project_values import PROJECT_FLAPPY_BIRD_ENV
 from optuna import Trial
 from optuna.trial import TrialState
-from optuna.visualization import plot_parallel_coordinate
-from tqdm import trange
 
 from helper.agent_dqn_per import DeepAgent
-from helper.training import train_agent, run_dqn_episode
+from helper.training import train_agent, evaluate_agent
 
 TRIAL_NUM_EPISODES = 300
 
@@ -20,6 +19,7 @@ def objective(trial: Trial):
     eps = trial.suggest_float("eps", 0.1, 0.8, step=0.1)
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
     target_ema = trial.suggest_float("target_ema", 0.7, 0.95, step=0.05)
+    network_hdim = trial.suggest_int("network_hdim", 8, 64, step=8)
 
 
     env = PROJECT_FLAPPY_BIRD_ENV
@@ -31,7 +31,8 @@ def objective(trial: Trial):
         buffer_capacity=5000,
         min_buffer_capacity=64,
         batch_size=64,
-        target_ema=target_ema
+        target_ema=target_ema,
+        network_hdim=network_hdim
     )
     _ = train_agent(
         agent,
@@ -44,26 +45,24 @@ def objective(trial: Trial):
         verbose=1,
         trial=trial
     )
-    reward = 0
-    print("Final evaluation")
-    for _ in trange(1000):
-        reward += run_dqn_episode(agent, env, evaluation=True, max_steps=1000, renderer=None)[0]
-    reward /= 1000
+    print("Final evaluation... ", end='')
+    reward = evaluate_agent(agent, env, n_episodes=100)
+    print(reward)
     return reward
 
-def launch_study(n_trials: int, timeout_minutes: int, name: str):
+def launch_study(objective_function: Callable, n_trials: int, timeout_minutes: int, study_name: str):
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 
     # Make unique name for the study and database filename
-    storage_name = f"sqlite:///optuna_{name}.db"
+    storage_name = f"sqlite:///optuna_{study_name}.db"
 
     study = optuna.create_study(
-        study_name=name,
+        study_name=study_name,
         storage=storage_name,
         direction="maximize",
         load_if_exists=True
     )
-    study.optimize(objective, n_trials=n_trials, timeout=60 * timeout_minutes)
+    study.optimize(objective_function, n_trials=n_trials, timeout=60 * timeout_minutes)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
@@ -81,7 +80,6 @@ def launch_study(n_trials: int, timeout_minutes: int, name: str):
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
-    plot_parallel_coordinate(study)
 
 
 if __name__ == '__main__':
@@ -89,7 +87,12 @@ if __name__ == '__main__':
     TIMEOUT_MINS = 15
     study_name = "DQN_PER"
 
-    launch_study(N_TRIALS, TIMEOUT_MINS, study_name)
+    launch_study(
+        objective_function=objective,
+        n_trials=N_TRIALS,
+        timeout_minutes=TIMEOUT_MINS,
+        study_name=study_name
+    )
 
 
 

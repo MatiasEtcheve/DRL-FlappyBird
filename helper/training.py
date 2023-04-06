@@ -166,10 +166,6 @@ def train_agent(
             eval_n_steps.append(n_step)
             episodes.append(episode)
 
-            # save best model
-            save_best_model(agent, eval_rewards[-1], eval_reward, filename="best_model.pkl")
-            eval_reward = np.max(eval_rewards)
-
             # display value and action maps
             if display_plots:
                 fig, axs = plot_value_and_policy(agent)
@@ -181,5 +177,17 @@ def train_agent(
                 # Stop the trial if reward is not progressing enough
                 if trial.should_prune():
                     optuna.exceptions.TrialPruned()
+            else:
+                # save best model
+                save_best_model(agent, eval_rewards[-1], eval_reward, filename="best_model.pkl")
+                eval_reward = np.max(eval_rewards)
 
     return episodes, eval_rewards, eval_n_steps
+
+
+def evaluate_agent(agent, env, n_episodes: int = 100):
+    reward = 0
+    for _ in trange(n_episodes):
+        reward += run_dqn_episode(agent, env, evaluation=True, max_steps=1000, renderer=None)[0]
+    reward /= n_episodes
+    return reward
