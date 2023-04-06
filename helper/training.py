@@ -1,11 +1,12 @@
 import copy
+import time
 from datetime import time
 from typing import Tuple, List
 
 import numpy as np
-from deep_rl.project_values import PROJECT_FLAPPY_BIRD_ENV
 from matplotlib import pyplot as plt
-import time
+from tqdm import trange
+
 from helper import compute_features_from_observation, save_best_model, plot_value_and_policy
 
 
@@ -21,7 +22,7 @@ def run_dqn_episode(
 
     Args:
         agent (DeepAgent): agent to run
-        env (Maze): running environment
+        env (FlappyBird): running environment
         evaluation (bool): eval mode. If `True`, the policy is greedy.
         max_steps (int, optional): Number of steps of the agent. Defaults to 1000.
         render (bool, optional): Real-time rendering of the policy run by the agent. Defaults to False.
@@ -66,6 +67,7 @@ def train_agent(
         num_eval_episodes: int = 10,
         eval_every_N: int = 100,
         max_steps: int = 1000,
+        max_eval_steps: int = 1000,
         verbose: int = 0,
 ) -> Tuple[List[int], List[float], List[int]]:
     """Trains an agent for a specified number of iterations
@@ -139,7 +141,7 @@ def train_agent(
                     [
                         [
                             run_dqn_episode(
-                                agent, env, evaluation=True, max_steps=max_steps
+                                agent, env, evaluation=True, max_steps=max_eval_stepsx
                             )
                         ]
                         for _ in range(num_eval_episodes)

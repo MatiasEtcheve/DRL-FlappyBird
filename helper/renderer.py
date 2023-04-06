@@ -8,7 +8,7 @@ from deep_rl.environments.flappy_bird import FlappyBird
 from tqdm import trange
 
 from helper import compute_features_from_observation
-from defined_in_notebook import FlappyObs
+from helper.defined_in_notebook import FlappyObs
 
 
 def plot_observation(observation: FlappyObs, ax=None):
@@ -131,4 +131,4 @@ def display_episode(deep_agent, env: FlappyBird) -> Video:
     _ = save_gif_episode(
         deep_agent, env, evaluation=True, max_steps=1000, filename=filename, fps=10
     )
-    return Video("test.mp4", embed=True)
+    return Video(filename, embed=True)
