@@ -1,9 +1,11 @@
 import copy
 import time
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
+import optuna.exceptions
 from matplotlib import pyplot as plt
+from optuna import Trial
 from tqdm import trange
 
 from helper import compute_features_from_observation, save_best_model, plot_value_and_policy
@@ -64,10 +66,11 @@ def train_agent(
         env,
         num_episodes: int = 2000,
         num_eval_episodes: int = 10,
-        eval_every_N: int = 100,
+        eval_every_N: Optional[int] = 100,
         max_steps: int = 1000,
         max_eval_steps: int = 1000,
         verbose: int = 0,
+        trial: Optional[Trial] = None
 ) -> Tuple[List[int], List[float], List[int]]:
     """Trains an agent for a specified number of iterations
 
@@ -83,6 +86,7 @@ def train_agent(
             * 1: display the training metrics
             * 2: plot the value function and the visited states
             * 3: 1 & 2
+        trial (Trial, optional): Optuna trial object used in hyperparameter search
 
     Returns:
         Tuple[List[int], List[float], List[int]]: val episodes, val rewards and val number of steps of the agent
@@ -94,6 +98,9 @@ def train_agent(
     train_rewards = []
     train_n_steps = []
     starting_time = time.time()
+    if eval_every_N is None:
+        verbose = 0
+
     print(
         "{:^18}|{:^18}|{:^40}|{:^40}".format(
             "Episode number:",
@@ -114,6 +121,7 @@ def train_agent(
 
     for episode in pbar:
         # training step
+
         reward, n_step = run_dqn_episode(
             agent, env, evaluation=False, max_steps=max_steps
         )
@@ -134,7 +142,7 @@ def train_agent(
             )
 
         # evaluation
-        if episode % eval_every_N == 0:
+        if eval_every_N is not None and episode % eval_every_N == 0:
             reward, n_step = np.mean(
                 np.concatenate(
                     [
@@ -166,5 +174,12 @@ def train_agent(
             if display_plots:
                 fig, axs = plot_value_and_policy(agent)
                 plt.show()
+
+            # Report result to Optuna (in case of hyperparameter search)
+            if trial is not None:
+                trial.report(reward, episode)
+                # Stop the trial if reward is not progressing enough
+                if trial.should_prune():
+                    optuna.exceptions.TrialPruned()
 
     return episodes, eval_rewards, eval_n_steps
