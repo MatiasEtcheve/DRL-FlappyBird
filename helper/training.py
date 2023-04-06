@@ -140,7 +140,7 @@ def train_agent(
                     [
                         [
                             run_dqn_episode(
-                                agent, env, evaluation=True, max_steps=max_eval_stepsx
+                                agent, env, evaluation=True, max_steps=max_eval_steps
                             )
                         ]
                         for _ in range(num_eval_episodes)
