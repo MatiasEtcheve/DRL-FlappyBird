@@ -9,11 +9,11 @@ from helper.training.train_dqn import train_agent, evaluate_agent
 def objective_dqn_per(trial: Trial):
 
     # Agent variables
-    gamma = 0.95 # trial.suggest_float('gama', 0.92, 0.97)
-    eps = trial.suggest_float("eps", 0., 0.25)
+    gamma = trial.suggest_float('gama', 0.91, 0.98)
+    eps = trial.suggest_float("eps", 0., 0.6)
     learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
-    target_ema = trial.suggest_float("target_ema", 0.55, 0.8)
-    network_hdim = trial.suggest_int("network_hdim", 36, 60, step=8)
+    target_ema = trial.suggest_float("target_ema", 0.5, 0.8)
+    network_hdim = trial.suggest_int("network_hdim", 36, 44, step=4)
     alpha_priority = trial.suggest_float("alpha_priority", 0.4, 0.8, step=0.1)
     beta_priority = trial.suggest_float("beta_priority", 0.4, 0.6, step=0.1)
 
@@ -50,8 +50,8 @@ def objective_dqn_per(trial: Trial):
 
 if __name__ == '__main__':
     N_TRIALS = 15
-    TRIAL_NUM_EPISODES = 1000
-    study_name = "DQN_PER_extended"
+    TRIAL_NUM_EPISODES = 500
+    study_name = "DQN_PER_extended_short_500"
 
     launch_study(
         objective_function=objective_dqn_per,
