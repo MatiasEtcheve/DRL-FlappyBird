@@ -23,9 +23,12 @@ class Transition:
 
 
 # SumTree
-# a binary tree data structure where the parent’s value is the sum of its children
-# Source of the implementation: https://github.com/rlcode/per/blob/master/SumTree.py
+#
 class SumTree:
+    """Data Structure necessary for the Prioritized Experience Replay Buffer.
+    It is a binary tree data structure where the parent’s value is the sum of its children
+    Source of the implementation: https://github.com/rlcode/per/blob/master/SumTree.py
+    """
     write = 0
 
     def __init__(self, capacity):
@@ -37,9 +40,7 @@ class SumTree:
     # update to the root node
     def _propagate(self, idx, change):
         parent = (idx - 1) // 2
-
         self.tree[parent] += change
-
         if parent != 0:
             self._propagate(parent, change)
 
@@ -89,7 +90,9 @@ class SumTree:
 
 
 class PrioritizedReplayBuffer:
-    """Fixed-size buffer to store transition tuples."""
+    """Fixed-size buffer to store transition tuples. The transitions are sampled with more priority given to
+    those who generated a larger TD error during training.
+    """
 
     def __init__(self, buffer_capacity: int, alpha: float, beta: float):
         """Initialize a ReplayBuffer object.
@@ -105,11 +108,12 @@ class PrioritizedReplayBuffer:
         self._max_priority = 1
 
     def _get_priority(self, error):
+        """Compute the priority of a sample given its TD error."""
         return (np.abs(error) + self._epsilon) ** self._alpha
 
     @property
     def size(self) -> int:
-        # Return the current number of elements in the buffer.
+        """Return the current number of elements in the buffer."""
         return self._memory.n_entries
 
     def add(
@@ -120,7 +124,9 @@ class PrioritizedReplayBuffer:
             done_t: chex.Array,
             state_tp1: chex.Array,
     ) -> None:
-        """Add a new transition to memory."""
+        """Add a new transition to memory, along with its priority"""
+
+        # Any new transition starts with maximal priority in order to be used at least once
         priority = self._max_priority
         self._memory.add(
             priority,
@@ -133,34 +139,34 @@ class PrioritizedReplayBuffer:
             )
         )
 
-    def sample(self) -> Transition:
-        """Randomly sample a transition from memory."""
-        assert self._memory, "replay buffer is unfilled"
-        # Your code here !
-        index = np.random.randint(self.size)
-        return self._memory[index]
-
     def sample_batch(self, batch_size) -> Tuple[Transition, list, list]:
-        """Randomly sample a transition from memory."""
+        """Randomly sample a batch of transitions from memory.
+        The transitions are uniformly drawn from segments of the SumTree's range, in which prioritized
+        transitions occupy more space.
+        """
         assert self._memory, "replay buffer is unfilled"
         batch = []
         idxs = []
-        segment = self._memory.total() / batch_size
         priorities = []
+        # Calculate segment length corresponding to each element in the batch size
+        segment_length = self._memory.total() / batch_size
 
-        # Increment beta
+        # Increment beta parameter
         self._beta = np.min([1., self._beta + self._beta_increment_per_sampling])
 
         for i in range(batch_size):
-            a = segment * i
-            b = segment * (i + 1)
+            # Calculate bounds of the segment
+            a = segment_length * i
+            b = segment_length * (i + 1)
 
+            # Randomly sample within the segment
             s = random.uniform(a, b)
             (idx, p, transition) = self._memory.get(s)
             priorities.append(p)
             batch.append(transition)
             idxs.append(idx)
 
+        # Compute importance-sampling weights
         sampling_probabilities = priorities / self._memory.total()
         imp_sampling_weight = np.power(self._memory.n_entries * sampling_probabilities, -self._beta)
         imp_sampling_weight /= imp_sampling_weight.max()
@@ -178,6 +184,7 @@ class PrioritizedReplayBuffer:
         return batch_transitions, idxs, imp_sampling_weight
 
     def update(self, idx, error):
+        """Update priority of a given transition"""
         priority = self._get_priority(error)
         self._memory.update(idx, priority)
         self._max_priority = max(self._max_priority, priority)
@@ -225,6 +232,11 @@ class DqnPerAgent:
             replay buffer to update the online network
           batch_size: batch size when updating the online network
           target_ema: weight when updating the target network.
+          network_hdim: number of neurons in the MLP's hidden layer
+          alpha_priority: alpha parameter of the Prioritized Experience Replay (float btw 0.0 and 1.0)
+          beta_priority: beta parameter of the Prioritized Experience Replay (float btw 0.0 and 1.0)
+          foreseen_bars: number of Upper and Lower bars (of each) that are encoded in the state representation that
+            the agent can see
           seed: seed of the random generator.
         """
         self._env = env
@@ -237,16 +249,12 @@ class DqnPerAgent:
         self._network_hdim = network_hdim
         self._foreseen_bars = foreseen_bars
 
-        # track the visit of each state
-        # The keys are the hashed states, the values are the number of times we visited it.
-        self._visits = {}
-
         # Define the neural network for this agent
         self._init, self._apply = hk.without_apply_rng(hk.transform(self._hk_qfunction))
         # Jit the forward pass of the neural network for better performances
         self.apply = jax.jit(self._apply)
 
-        # Also jit the update functiom
+        # Also jit the update function
         self._update_fn = jax.jit(self._update_fn)
 
         # Initialize the network's parameters
@@ -294,12 +302,15 @@ class DqnPerAgent:
 
         Args:
           state: observed state.
-          eval: if True the agent is acting in evaluation mode (which means it only
+          evaluation: if True the agent is acting in evaluation mode (which means it only
             acts according to the best policy it knows.)
+        Return: Chosen action (1 or 0)
         """
-        # Fill in this function to act using an epsilon-greedy policy.
+        # Epsilon-greedy policy
         if not evaluation and np.random.uniform() < self._eps:
             return np.random.randint(self._Na)
+
+        # Encode the state representation with the parametrized number of foreseen bars
         state_features = compute_features_from_observation(state, foreseen_bars=self._foreseen_bars)
         return np.argmax(self._apply(self._learner_state.online_params, state_features[None]))
 
@@ -312,7 +323,11 @@ class DqnPerAgent:
             reward_t: chex.Array,
             done_t: chex.Array,
             state_tp1: chex.Array,
-    ) -> Tuple[chex.Array]:
+    ) -> chex.Array:
+        """Compute the TD error corresponding to a batch of transitions.
+        This function was separated from the loss_fn because Prioritized
+        Experience Replay needs a calculation of the TD error.
+        """
         # Step one: compute the target Q-value for state t+1
         q_tp1 = self._apply(target_params, state_tp1)
 
@@ -358,7 +373,7 @@ class DqnPerAgent:
           The Q-learning loss.
         """
 
-        # Get TD error
+        # Compute TD error
         td_error = self.td_error(
             online_params,
             target_params,
@@ -443,17 +458,15 @@ class DqnPerAgent:
           DQN loss obtained when updating the online network.
         """
         # First, we need to add the new transition to the memory buffer
-        # Exploration bonus for Big Maze
         self._buffer.add(self._state, action_t, reward_t, done_t, state_tp1)
         self._state = state_tp1
 
-        # We update the agent if and only if we have enought state stored in
-        # memory.
+        # We update the agent if and only if we have enough transitions in buffer memory.
         if self._buffer.size >= self._min_buffer_capacity:
             batch, idxs, imp_sampling_weight = self._buffer.sample_batch(self._batch_size)
             loss, td_errors, self._learner_state = self._update_fn(self._learner_state, batch)
 
-            # Update priorities
+            # Update transition priorities in the memory buffer
             for idx, td_error in zip(idxs, td_errors):
                 self._buffer.update(idx, td_error)
 
@@ -469,7 +482,7 @@ class DqnPerAgent:
         Returns:
             chex.Array: q vector of length the number of actions
         """
+        # Encode the observations with the parametrized number of foreseen bars
         features = compute_features_from_observation(observation, self._foreseen_bars)
-        # q value: update if using other kind of agent
         q = self.apply(self._learner_state.online_params, features)
         return q

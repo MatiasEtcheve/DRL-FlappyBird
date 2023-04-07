@@ -16,7 +16,7 @@ def run_dqn_episode(
     env,
     evaluation: bool,
     max_steps: int = 1000,
-    renderer: bool = None,
+    renderer = None,
     time_between_frame: float = 0.1,
 ) -> Tuple[float, int]:
     """Runs an agent on the environment `env`.
@@ -26,7 +26,7 @@ def run_dqn_episode(
         env (FlappyBird): running environment
         evaluation (bool): eval mode. If `True`, the policy is greedy.
         max_steps (int, optional): Number of steps of the agent. Defaults to 1000.
-        render (bool, optional): Real-time rendering of the policy run by the agent. Defaults to False.
+        renderer (optional): Real-time rendering of the policy run by the agent. Defaults to None.
         time_between_frame (float, optional): time bewteen 2 rendered frames
 
     Returns:
@@ -51,6 +51,7 @@ def run_dqn_episode(
         if done or n_steps > max_steps:
             break
 
+        # Render episode if a renderer was passed as an argument
         if renderer is not None:
             renderer.clear()
             renderer.draw_list(env.render())
@@ -71,16 +72,17 @@ def train_agent(
         max_eval_steps: int = 1000,
         verbose: int = 0,
         trial: Optional[Trial] = None
-) -> Tuple[List[int], List[float], List[int]]:
+) -> Tuple[List[int], Tuple[List[float]], Tuple[List[float]]]:
     """Trains an agent for a specified number of iterations
 
     Args:
         agent (DeepAgent): agent to run
-        env (Maze): running environment
+        env (FlappyBird): running environment
         num_episodes (int, optional): Number of episodes to run. Defaults to 2000.
         num_eval_episodes (int, optional): Number of validation episodes. Defaults to 10.
-        eval_every_N (int, optional): Number of training episodes between a validation step. Defaults to 100.
+        eval_every_N (int, optional): Number of training episodes between evaluations. Defaults to 100.
         max_steps (int, optional): maximum number of steps per episode. Defaults to 1000.
+        max_eval_steps (int, optional): maximum number of steps per episode during evaluation. Defaults to 1000.
         verbose (int, optional): Verbose level. Defaults to 0.
             * 0: display only the validation metrics
             * 1: display the training metrics
@@ -89,18 +91,21 @@ def train_agent(
         trial (Trial, optional): Optuna trial object used in hyperparameter search
 
     Returns:
-        Tuple[List[int], List[float], List[int]]: val episodes, val rewards and val number of steps of the agent
+        Tuple[List[int], Tuple[List[float]], Tuple[List[float]]]: val episodes, val rewards and val number of steps of the agent
     """
     episodes = []
     eval_reward = 0
-    eval_rewards = []
-    eval_n_steps = []
+    eval_rewards_means = []
+    eval_n_steps_means = []
+    eval_rewards_stds = []
+    eval_n_steps_stds = []
     train_rewards = []
     train_n_steps = []
     starting_time = time.time()
     if eval_every_N is None:
         verbose = 0
 
+    # Diplay header line
     print(
         "{:^18}|{:^18}|{:^40}|{:^40}".format(
             "Episode number:",
@@ -112,6 +117,7 @@ def train_agent(
     print(
         "------------------------------------------------------------------------------------------------------------------------"
     )
+    # Display settings
     display_pbar = verbose in [1, 3]
     display_plots = verbose in [2, 3]
     if display_pbar:
@@ -119,16 +125,16 @@ def train_agent(
     else:
         pbar = range(1, num_episodes + 1)
 
+    # Run training episodes
     for episode in pbar:
-        # training step
-
+        # Training step
         reward, n_step = run_dqn_episode(
             agent, env, evaluation=False, max_steps=max_steps
         )
         train_rewards.append(reward)
         train_n_steps.append(n_step)
 
-        # training metrics, nothing interesting
+        # Display training metrics, nothing interesting
         if display_pbar:
             pbar.set_postfix(
                 {
@@ -141,29 +147,33 @@ def train_agent(
                 }
             )
 
-        # evaluation
+        # Evaluation
         if eval_every_N is not None and episode % eval_every_N == 0:
-            reward, n_step = np.mean(
-                np.concatenate(
-                    [
-                        [
-                            run_dqn_episode(
-                                agent, env, evaluation=True, max_steps=max_eval_steps
-                            )
-                        ]
-                        for _ in range(num_eval_episodes)
-                    ],
-                    axis=0,
-                ),
+            rewards, n_steps = np.concatenate(
+                [
+                    [run_dqn_episode(agent, env, evaluation=True, max_steps=1000)]
+                    for _ in range(num_eval_episodes)
+                ],
                 axis=0,
-            )
+            ).T
+            mean_rewards = np.mean(rewards)
+            mean_n_steps = np.mean(n_steps)
+            std_rewards = np.std(rewards)
+            std_n_steps = np.std(n_steps)
             print(
-                "{:^18}|{:^18.2f}|{:^40}|{:^40}".format(
-                    episode, (time.time() - starting_time) / 60, reward, n_step
+                "{:^18}|{:^20.2f}|{:^30} ({:^6.0f}) |{:^30} ({:^6.0f}) ".format(
+                    episode,
+                    (time.time() - starting_time) / 60,
+                    mean_rewards,
+                    std_rewards,
+                    mean_n_steps,
+                    std_n_steps,
                 )
             )
-            eval_rewards.append(reward)
-            eval_n_steps.append(n_step)
+            eval_rewards_means.append(mean_rewards)
+            eval_n_steps_means.append(mean_n_steps)
+            eval_rewards_stds.append(std_rewards)
+            eval_n_steps_stds.append(std_n_steps)
             episodes.append(episode)
 
             # display value and action maps
@@ -179,10 +189,11 @@ def train_agent(
                     optuna.exceptions.TrialPruned()
             else:
                 # save best model
-                save_best_model(agent, eval_rewards[-1], eval_reward, filename="best_model.pkl")
-                eval_reward = np.max(eval_rewards)
+                save_best_model(agent, eval_rewards_means[-1], eval_reward, filename=f"{eval_reward:06.1f}_model.pkl")
+                save_best_model(agent, eval_rewards_means[-1], eval_reward, filename=f"best_model.pkl")
+                eval_reward = np.max(eval_rewards_means)
 
-    return episodes, eval_rewards, eval_n_steps
+    return episodes, (eval_rewards_means, eval_rewards_stds), (eval_n_steps_means, eval_n_steps_stds)
 
 
 def evaluate_agent(agent, env, n_episodes: int = 100):
