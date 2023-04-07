@@ -91,15 +91,15 @@ class SumTree:
 class PrioritizedReplayBuffer:
     """Fixed-size buffer to store transition tuples."""
 
-    def __init__(self, buffer_capacity: int):
+    def __init__(self, buffer_capacity: int, alpha: float, beta: float):
         """Initialize a ReplayBuffer object.
         Args:
             buffer_capacity (int): maximal number of tuples to store at once
         """
         self._memory = SumTree(buffer_capacity)
         self._maxlen = buffer_capacity
-        self._alpha = 0.6
-        self._beta = 0.4
+        self._alpha = alpha
+        self._beta = beta
         self._beta_increment_per_sampling = 0.001
         self._epsilon = 0.01
         self._max_priority = 1
@@ -208,6 +208,8 @@ class DqnPerAgent:
             batch_size: int,
             target_ema: float,
             network_hdim: int,
+            alpha_priority: float,
+            beta_priority: float,
             foreseen_bars: int = 2,
             seed: int = 0,
     ) -> None:
@@ -254,7 +256,7 @@ class DqnPerAgent:
 
         # Initialize the replay buffer
         self._min_buffer_capacity = min_buffer_capacity
-        self._buffer = PrioritizedReplayBuffer(buffer_capacity)
+        self._buffer = PrioritizedReplayBuffer(buffer_capacity, alpha_priority, beta_priority)
 
         # Build a variable to store the last state observed by the agent
         self._state = None
