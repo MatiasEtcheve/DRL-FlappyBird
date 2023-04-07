@@ -1,7 +1,7 @@
 from deep_rl.project_values import PROJECT_FLAPPY_BIRD_ENV
 from optuna import Trial
 
-from helper.agents.agent_dqn_per import DeepAgent
+from helper.agents.agent_dqn_per import DqnPerAgent
 from helper.hparm_tuning.hyperparm_tuning import launch_study
 from helper.training.train_dqn import train_agent, evaluate_agent
 
@@ -17,7 +17,7 @@ def objective_dqn_per(trial: Trial):
 
 
     env = PROJECT_FLAPPY_BIRD_ENV
-    agent = DeepAgent(
+    agent = DqnPerAgent(
         env=env,
         gamma=gamma,
         eps=eps,

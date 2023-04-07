@@ -196,7 +196,7 @@ class LearnerState:
     opt_state: optax.OptState
 
 
-class DeepAgent:
+class DqnPerAgent:
     def __init__(
             self,
             env,

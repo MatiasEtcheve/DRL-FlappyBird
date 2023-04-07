@@ -8,5 +8,5 @@ tqdm
 deep-rl # Custom package made by the Teachers
 pandas
 optuna
-optuna-dashboard
 plotly
+optuna-dashboard
