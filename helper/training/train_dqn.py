@@ -91,7 +91,7 @@ def train_agent(
         trial (Trial, optional): Optuna trial object used in hyperparameter search
 
     Returns:
-        Tuple[List[int], List[float], List[int]]: val episodes, val rewards and val number of steps of the agent
+        Tuple[List[int], Tuple[List[float]], Tuple[List[float]]]: val episodes, val rewards and val number of steps of the agent
     """
     episodes = []
     eval_reward = 0
