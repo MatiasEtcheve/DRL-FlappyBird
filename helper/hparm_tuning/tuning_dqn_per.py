@@ -9,12 +9,13 @@ from helper.training.train_dqn import train_agent, evaluate_agent
 def objective_dqn_per(trial: Trial):
 
     # Agent variables
-    gamma = trial.suggest_float('gama', 0.9, 0.99, step=0.01)
-    eps = trial.suggest_float("eps", 0.1, 0.8, step=0.1)
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
-    target_ema = trial.suggest_float("target_ema", 0.7, 0.95, step=0.05)
-    network_hdim = trial.suggest_int("network_hdim", 8, 64, step=8)
-
+    gamma = 0.95 # trial.suggest_float('gama', 0.92, 0.97)
+    eps = trial.suggest_float("eps", 0., 0.25)
+    learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+    target_ema = trial.suggest_float("target_ema", 0.55, 0.8)
+    network_hdim = trial.suggest_int("network_hdim", 36, 60, step=8)
+    alpha_priority = trial.suggest_float("alpha_priority", 0.4, 0.8, step=0.1)
+    beta_priority = trial.suggest_float("beta_priority", 0.4, 0.6, step=0.1)
 
     env = PROJECT_FLAPPY_BIRD_ENV
     agent = DeepAgent(
@@ -26,7 +27,9 @@ def objective_dqn_per(trial: Trial):
         min_buffer_capacity=64,
         batch_size=64,
         target_ema=target_ema,
-        network_hdim=network_hdim
+        network_hdim=network_hdim,
+        alpha_priority=alpha_priority,
+        beta_priority=beta_priority
     )
     _ = train_agent(
         agent,
@@ -46,15 +49,14 @@ def objective_dqn_per(trial: Trial):
 
 
 if __name__ == '__main__':
-    N_TRIALS = 30
+    N_TRIALS = 15
     TRIAL_NUM_EPISODES = 1000
-    TIMEOUT_MINS = 15
-    study_name = "DQN_PER"
+    study_name = "DQN_PER_extended"
 
     launch_study(
         objective_function=objective_dqn_per,
         n_trials=N_TRIALS,
-        timeout_minutes=TIMEOUT_MINS,
+        timeout_minutes=None,
         study_name=study_name
     )
 
