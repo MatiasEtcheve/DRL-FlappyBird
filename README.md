@@ -1,5 +1,21 @@
 # Flappy Bird Helper
 
+## Contenu
+### Agent de RL
+Dossier `helper/agents`  
+Agents implémentés:
+- DQN + Prioritized experience replay
+- PPO
+- Reinforce
+- A2C
+
+### Tuning d'hyperparamètres
+Dossier `helper/hyparam_tuning`
+
+### Boucles d'entraînement
+Dossier `helper/training`
+
+
 ## Instructions d'installation
 La bibliothèque `helper` est conçus pour être installée dans un notebook Colab de la même manière
 que la bibilothèque `deep-rl`. Comme le dépôt est privé, il y a une procédure un peu technique
