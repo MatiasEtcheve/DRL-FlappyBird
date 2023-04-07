@@ -189,7 +189,8 @@ def train_agent(
                     optuna.exceptions.TrialPruned()
             else:
                 # save best model
-                save_best_model(agent, eval_rewards_means[-1], eval_reward, filename="best_model.pkl")
+                save_best_model(agent, eval_rewards_means[-1], eval_reward, filename=f"{eval_reward:06.1f}_model.pkl")
+                save_best_model(agent, eval_rewards_means[-1], eval_reward, filename=f"best_model.pkl")
                 eval_reward = np.max(eval_rewards_means)
 
     return episodes, (eval_rewards_means, eval_rewards_stds), (eval_n_steps_means, eval_n_steps_stds)
